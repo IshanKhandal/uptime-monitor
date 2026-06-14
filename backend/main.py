@@ -9,8 +9,6 @@ import urllib.request
 import urllib.error
 import time
 
-# --- 1. DATABASE SETUP ---
-# Using SQLite for Day 1 local speed.
 SQLALCHEMY_DATABASE_URL = "sqlite:///./uptime.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -39,42 +37,37 @@ def get_db():
     finally:
         db.close()
 
-# --- 2. FASTAPI APP ---
-app = FastAPI(title="HENNGE Uptime Monitor API")
-
+app = FastAPI(title="Uptime Monitor API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 3. THE BACKGROUND MONITORING ENGINE ---
+def ping_single(service_id: int, url: str, db: Session):
+    start_time = time.time()
+    status_code = 500
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=5) as response:
+            status_code = response.getcode()
+    except urllib.error.HTTPError as e:
+        status_code = e.code
+    except Exception:
+        status_code = 500
+    response_time_ms = round((time.time() - start_time) * 1000, 2)
+    ping_log = PingHistory(service_id=service_id, response_time_ms=response_time_ms, status_code=status_code)
+    db.add(ping_log)
+    db.commit()
+    return ping_log
+
 def ping_services():
     db = SessionLocal()
     services = db.query(Service).all()
     for service in services:
-        start_time = time.time()
-        status_code = 500
-        try:
-            req = urllib.request.Request(service.url, method="GET")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                status_code = response.getcode()
-        except urllib.error.HTTPError as e:
-            status_code = e.code
-        except Exception:
-            status_code = 500
-        
-        response_time_ms = round((time.time() - start_time) * 1000, 2)
-        
-        ping_log = PingHistory(
-            service_id=service.id,
-            response_time_ms=response_time_ms,
-            status_code=status_code
-        )
-        db.add(ping_log)
-    db.commit()
+        ping_single(service.id, service.url, db)
     db.close()
     print(f"Pinger executed across {len(services)} services.")
 
@@ -84,7 +77,6 @@ def start_scheduler():
     scheduler.add_job(ping_services, "interval", seconds=60)
     scheduler.start()
 
-# --- 4. API ENDPOINTS ---
 class ServiceCreate(BaseModel):
     name: str
     url: str
@@ -100,6 +92,24 @@ def add_service(service: ServiceCreate, db: Session = Depends(get_db)):
 @app.get("/services/")
 def get_all_services(db: Session = Depends(get_db)):
     return db.query(Service).all()
+
+@app.delete("/services/{service_id}")
+def delete_service(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    db.query(PingHistory).filter(PingHistory.service_id == service_id).delete()
+    db.delete(service)
+    db.commit()
+    return {"message": "Deleted"}
+
+@app.post("/ping/{service_id}")
+def manual_ping(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    result = ping_single(service.id, service.url, db)
+    return {"status_code": result.status_code, "response_time_ms": result.response_time_ms}
 
 @app.get("/history/{service_id}")
 def get_service_history(service_id: int, db: Session = Depends(get_db)):
