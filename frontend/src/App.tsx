@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface Service { id: number; name: string; url: string; }
 interface Ping { id: number; timestamp: string; response_time_ms: number; status_code: number; time?: string; }
 
-const API = "http://127.0.0.1:8000";
+const API = "https://uptime-monitor-api-tz55.onrender.com";
 
 const card = { backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", padding: "1.25rem" };
 const label = { fontSize: "0.65rem", letterSpacing: "0.12em", color: "#475569", textTransform: "uppercase" as const, marginBottom: "0.4rem" };
@@ -252,3 +252,4 @@ export default function App() {
     </div>
   );
 }
+
