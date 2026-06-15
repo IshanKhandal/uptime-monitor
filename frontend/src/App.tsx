@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
 interface Service { id: number; name: string; url: string; }
 interface Ping { id: number; timestamp: string; response_time_ms: number; status_code: number; time?: string; }
@@ -78,7 +78,7 @@ export default function App() {
     const a = document.createElement("a"); a.href = url; a.download = `${activeService?.name}-pings.csv`; a.click();
   };
 
-  const uptimePercent = history.length > 0 ? ((history.filter(p => p.status_code === 200).length / history.length) * 100).toFixed(1) : "N/A";
+  const uptimePercent = history.length > 0 ? parseFloat(((history.filter(p => p.status_code === 200).length / history.length) * 100).toFixed(1)) : 0;
   const avgLatency = history.length > 0 ? (history.reduce((a, p) => a + p.response_time_ms, 0) / history.length).toFixed(0) : "N/A";
   const minLatency = history.length > 0 ? Math.min(...history.map(p => p.response_time_ms)).toFixed(0) : "N/A";
   const maxLatency = history.length > 0 ? Math.max(...history.map(p => p.response_time_ms)).toFixed(0) : "N/A";
@@ -86,12 +86,26 @@ export default function App() {
   const isOnline = lastPing?.status_code === 200;
   const incidents = history.filter(p => p.status_code !== 200);
 
+  const donutData = [
+    { name: "Uptime", value: uptimePercent },
+    { name: "Downtime", value: parseFloat((100 - uptimePercent).toFixed(1)) },
+  ];
+
+  const buckets = [
+    { range: "0-100ms", count: history.filter(p => p.response_time_ms <= 100).length },
+    { range: "100-200ms", count: history.filter(p => p.response_time_ms > 100 && p.response_time_ms <= 200).length },
+    { range: "200-500ms", count: history.filter(p => p.response_time_ms > 200 && p.response_time_ms <= 500).length },
+    { range: "500ms+", count: history.filter(p => p.response_time_ms > 500).length },
+  ];
+
   const inputStyle = { padding: "8px 10px", backgroundColor: theme.subtle, border: `1px solid ${theme.border}`, borderRadius: "8px", color: theme.text, fontSize: "0.82rem", width: "100%", outline: "none" };
   const cardStyle = { backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "1.25rem" };
   const labelStyle = { fontSize: "0.65rem", letterSpacing: "0.12em", color: theme.muted, textTransform: "uppercase" as const, marginBottom: "0.4rem" };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: theme.bg, padding: "1.5rem", transition: "all 0.3s", fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif' }}>
+
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", paddingBottom: "1rem", borderBottom: `1px solid ${theme.border}` }}>
         <div>
           <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: theme.text, letterSpacing: "-0.02em", margin: 0 }}>
@@ -109,6 +123,7 @@ export default function App() {
       </div>
 
       <div style={{ display: "flex", gap: "1.5rem" }}>
+        {/* Sidebar */}
         <div style={{ width: "240px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div style={{ ...cardStyle }}>
             <p style={{ ...labelStyle }}>Services ({services.length})</p>
@@ -151,9 +166,11 @@ export default function App() {
           )}
         </div>
 
+        {/* Main panel */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
           {activeService ? (
             <>
+              {/* Service header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -171,6 +188,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Stats row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem" }}>
                 {[
                   { label: "Status", value: lastPing === null ? "PENDING" : isOnline ? "ONLINE" : "OFFLINE", color: lastPing === null ? "#f59e0b" : isOnline ? "#10b981" : "#f87171" },
@@ -186,9 +204,77 @@ export default function App() {
                 ))}
               </div>
 
+              {/* Status timeline */}
+              <div style={{ ...cardStyle }}>
+                <p style={{ ...labelStyle, marginBottom: "0.75rem" }}>Status Timeline (last 50 pings)</p>
+                <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+                  {history.map(p => (
+                    <div key={p.id} title={`${p.time} - ${p.status_code} - ${p.response_time_ms}ms`} style={{ width: "16px", height: "28px", borderRadius: "3px", backgroundColor: p.status_code === 200 ? "#10b981" : "#f87171", cursor: "pointer", transition: "transform 0.1s" }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = "scaleY(1.3)")}
+                      onMouseLeave={e => (e.currentTarget.style.transform = "scaleY(1)")}
+                    />
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <div style={{ width: "10px", height: "10px", borderRadius: "2px", backgroundColor: "#10b981" }}></div>
+                    <span style={{ fontSize: "0.72rem", color: theme.muted }}>Online</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <div style={{ width: "10px", height: "10px", borderRadius: "2px", backgroundColor: "#f87171" }}></div>
+                    <span style={{ fontSize: "0.72rem", color: theme.muted }}>Offline</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                {/* Donut chart */}
+                <div style={{ ...cardStyle }}>
+                  <p style={{ ...labelStyle, marginBottom: "0.5rem" }}>Uptime Distribution</p>
+                  <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} dataKey="value" startAngle={90} endAngle={-270}>
+                          <Cell fill="#10b981" />
+                          <Cell fill={darkMode ? "#1e293b" : "#e2e8f0"} />
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: "8px", fontSize: "0.8rem" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: "absolute", textAlign: "center", pointerEvents: "none" }}>
+                      <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#10b981", margin: 0 }}>{uptimePercent}%</p>
+                      <p style={{ fontSize: "0.7rem", color: theme.muted, margin: 0 }}>uptime</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bar chart - latency distribution */}
+                <div style={{ ...cardStyle }}>
+                  <p style={{ ...labelStyle, marginBottom: "0.5rem" }}>Latency Distribution</p>
+                  <div style={{ height: "220px" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={buckets} barSize={32}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme.border} vertical={false} />
+                        <XAxis dataKey="range" stroke={theme.border} tick={{ fontSize: 10, fill: theme.muted }} />
+                        <YAxis stroke={theme.border} tick={{ fontSize: 10, fill: theme.muted }} allowDecimals={false} />
+                        <Tooltip contentStyle={{ backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: "8px", fontSize: "0.8rem" }} labelStyle={{ color: theme.muted }} itemStyle={{ color: theme.accent }} />
+                        <Bar dataKey="count" name="Pings" radius={[4, 4, 0, 0]}>
+                          <Cell fill="#10b981" />
+                          <Cell fill="#0ea5e9" />
+                          <Cell fill="#f59e0b" />
+                          <Cell fill="#f87171" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Response time chart */}
               <div style={{ ...cardStyle }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                  <p style={{ ...labelStyle, margin: 0 }}>Response Time (ms)</p>
+                  <p style={{ ...labelStyle, margin: 0 }}>Response Time Over Time</p>
                   <div style={{ display: "flex", gap: "0.4rem" }}>
                     {(["area", "line"] as const).map(t => (
                       <button key={t} onClick={() => setChartType(t)} style={{ padding: "4px 10px", backgroundColor: chartType === t ? theme.accent : "transparent", color: chartType === t ? "#020817" : theme.muted, border: `1px solid ${chartType === t ? theme.accent : theme.border}`, borderRadius: "6px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600 }}>{t}</button>
@@ -196,9 +282,9 @@ export default function App() {
                   </div>
                 </div>
                 {history.length === 0 ? (
-                  <div style={{ height: "250px", display: "flex", alignItems: "center", justifyContent: "center", color: theme.muted }}>Waiting for ping data...</div>
+                  <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: theme.muted }}>Waiting for ping data...</div>
                 ) : (
-                  <div style={{ height: "250px" }}>
+                  <div style={{ height: "220px" }}>
                     <ResponsiveContainer width="100%" height="100%">
                       {chartType === "area" ? (
                         <AreaChart data={history}>
@@ -228,8 +314,12 @@ export default function App() {
                 )}
               </div>
 
+              {/* Recent pings table */}
               <div style={{ ...cardStyle }}>
-                <p style={{ ...labelStyle, marginBottom: "0.75rem" }}>Recent Pings</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <p style={{ ...labelStyle, margin: 0 }}>Recent Pings</p>
+                  <span style={{ fontSize: "0.72rem", color: theme.muted }}>{history.length} total recorded</span>
+                </div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
