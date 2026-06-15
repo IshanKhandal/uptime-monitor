@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 
-interface Service { id: number; name: string; url: string; tag?: string; }
+interface Service { id: number; name: string; url: string; }
 interface Ping { id: number; timestamp: string; response_time_ms: number; status_code: number; time?: string; }
 
 const API = "https://uptime-monitor-api-tz55.onrender.com";
@@ -18,7 +18,6 @@ export default function App() {
   const [lastPinged, setLastPinged] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [chartType, setChartType] = useState<"line" | "area">("area");
-  
 
   const theme = {
     bg: darkMode ? "#020817" : "#f1f5f9",
@@ -44,7 +43,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { fetchServices(); const i = setInterval(fetchServices, 30000); return () => clearInterval(i); }, []);
-  useEffect(() => { if (!activeService) return; fetchHistory(activeService); const i = setInterval(() => { fetchHistory(activeService); }, 5000); return () => clearInterval(i); }, [activeService]);
+  useEffect(() => { if (!activeService) return; fetchHistory(activeService); const i = setInterval(() => fetchHistory(activeService), 5000); return () => clearInterval(i); }, [activeService]);
 
   const addService = () => {
     if (!newName.trim() || !newUrl.trim()) { setError("Name and URL are required."); return; }
@@ -93,29 +92,23 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: theme.bg, padding: "1.5rem", transition: "all 0.3s", fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif' }}>
-
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", paddingBottom: "1rem", borderBottom: `1px solid ${theme.border}` }}>
         <div>
           <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: theme.text, letterSpacing: "-0.02em", margin: 0 }}>
-            <span style={{ color: theme.accent, marginRight: "0.4rem", fontSize: "1rem" }}>?</span>
-            Uptime Monitor
+            <span style={{ color: theme.accent, marginRight: "0.4rem" }}>◆</span>Uptime Monitor
           </h1>
-          <p style={{ color: theme.muted, fontSize: "0.8rem", marginTop: "2px", margin: "2px 0 0 0" }}>Real-time service health dashboard</p>
+          <p style={{ color: theme.muted, fontSize: "0.8rem", margin: "2px 0 0 0" }}>Real-time service health dashboard</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", display: "inline-block", boxShadow: "0 0 6px #10b981" }}></span>
-            <span style={{ color: theme.muted, fontSize: "0.75rem" }}>Live</span>
-          </div>
+          <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", display: "inline-block", boxShadow: "0 0 6px #10b981" }}></span>
+          <span style={{ color: theme.muted, fontSize: "0.75rem" }}>Live</span>
           <button onClick={() => setDarkMode(!darkMode)} style={{ padding: "6px 12px", backgroundColor: theme.subtle, color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>
-            {darkMode ? "? Light" : "? Dark"}
+            {darkMode ? "Light" : "Dark"}
           </button>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: "1.5rem" }}>
-        {/* Sidebar */}
         <div style={{ width: "240px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div style={{ ...cardStyle }}>
             <p style={{ ...labelStyle }}>Services ({services.length})</p>
@@ -126,7 +119,7 @@ export default function App() {
                   <button onClick={() => setActiveService(s)} style={{ flex: 1, padding: "8px 10px", backgroundColor: activeService?.id === s.id ? theme.accent : theme.subtle, color: activeService?.id === s.id ? "#020817" : theme.text, border: `1px solid ${activeService?.id === s.id ? theme.accent : theme.border}`, borderRadius: "8px", cursor: "pointer", fontWeight: 600, textAlign: "left", fontSize: "0.82rem" }}>
                     {s.name}
                   </button>
-                  <button onClick={() => deleteService(s.id)} style={{ padding: "6px 8px", backgroundColor: "transparent", color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: "8px", cursor: "pointer", fontSize: "0.75rem" }} title="Delete">?</button>
+                  <button onClick={() => deleteService(s.id)} style={{ padding: "6px 8px", backgroundColor: "transparent", color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: "8px", cursor: "pointer", fontSize: "0.75rem" }}>x</button>
                 </div>
               ))}
             </div>
@@ -144,14 +137,13 @@ export default function App() {
             </div>
           </div>
 
-          {/* Incidents */}
           {incidents.length > 0 && (
             <div style={{ ...cardStyle }}>
               <p style={{ ...labelStyle, color: "#f87171" }}>Incidents ({incidents.length})</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.75rem" }}>
                 {incidents.slice(0, 5).map(p => (
                   <div key={p.id} style={{ fontSize: "0.72rem", color: "#f87171", padding: "4px 8px", backgroundColor: "#2d1515", borderRadius: "6px" }}>
-                    {p.time} � {p.status_code}
+                    {p.time} - {p.status_code}
                   </div>
                 ))}
               </div>
@@ -159,11 +151,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Main panel */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
           {activeService ? (
             <>
-              {/* Service header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -174,14 +164,13 @@ export default function App() {
                   {lastPinged && <p style={{ color: theme.muted, fontSize: "0.7rem", margin: "2px 0 0 0" }}>Last manual ping: {lastPinged}</p>}
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button onClick={exportCSV} style={{ padding: "7px 14px", backgroundColor: "transparent", color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>? Export CSV</button>
+                  <button onClick={exportCSV} style={{ padding: "7px 14px", backgroundColor: "transparent", color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>Export CSV</button>
                   <button onClick={manualPing} disabled={pinging} style={{ padding: "7px 14px", backgroundColor: "transparent", color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: "8px", cursor: pinging ? "not-allowed" : "pointer", fontSize: "0.8rem", fontWeight: 600, opacity: pinging ? 0.5 : 1 }}>
-                    {pinging ? "Pinging..." : "? Ping Now"}
+                    {pinging ? "Pinging..." : "Ping Now"}
                   </button>
                 </div>
               </div>
 
-              {/* Stats */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem" }}>
                 {[
                   { label: "Status", value: lastPing === null ? "PENDING" : isOnline ? "ONLINE" : "OFFLINE", color: lastPing === null ? "#f59e0b" : isOnline ? "#10b981" : "#f87171" },
@@ -197,13 +186,12 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Chart */}
               <div style={{ ...cardStyle }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                   <p style={{ ...labelStyle, margin: 0 }}>Response Time (ms)</p>
                   <div style={{ display: "flex", gap: "0.4rem" }}>
                     {(["area", "line"] as const).map(t => (
-                      <button key={t} onClick={() => setChartType(t)} style={{ padding: "4px 10px", backgroundColor: chartType === t ? theme.accent : "transparent", color: chartType === t ? "#020817" : theme.muted, border: `1px solid ${chartType === t ? theme.accent : theme.border}`, borderRadius: "6px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600, textTransform: "capitalize" }}>{t}</button>
+                      <button key={t} onClick={() => setChartType(t)} style={{ padding: "4px 10px", backgroundColor: chartType === t ? theme.accent : "transparent", color: chartType === t ? "#020817" : theme.muted, border: `1px solid ${chartType === t ? theme.accent : theme.border}`, borderRadius: "6px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600 }}>{t}</button>
                     ))}
                   </div>
                 </div>
@@ -240,7 +228,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Recent pings table */}
               <div style={{ ...cardStyle }}>
                 <p style={{ ...labelStyle, marginBottom: "0.75rem" }}>Recent Pings</p>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
@@ -273,5 +260,3 @@ export default function App() {
     </div>
   );
 }
-
-
