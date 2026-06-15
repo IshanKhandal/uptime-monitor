@@ -18,7 +18,7 @@ export default function App() {
   const [lastPinged, setLastPinged] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [chartType, setChartType] = useState<"line" | "area">("area");
-  const [tick, setTick] = useState(0);
+  
 
   const theme = {
     bg: darkMode ? "#020817" : "#f1f5f9",
@@ -44,7 +44,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { fetchServices(); const i = setInterval(fetchServices, 30000); return () => clearInterval(i); }, []);
-  useEffect(() => { if (!activeService) return; fetchHistory(activeService); const i = setInterval(() => { fetchHistory(activeService); setTick(t => t + 1); }, 5000); return () => clearInterval(i); }, [activeService]);
+  useEffect(() => { if (!activeService) return; fetchHistory(activeService); const i = setInterval(() => { fetchHistory(activeService); }, 5000); return () => clearInterval(i); }, [activeService]);
 
   const addService = () => {
     if (!newName.trim() || !newUrl.trim()) { setError("Name and URL are required."); return; }
@@ -273,3 +273,5 @@ export default function App() {
     </div>
   );
 }
+
+
